@@ -33,17 +33,25 @@ def proto2_to_rosmsg(proto_file, out_dir):
     current_message = None
     current_file = None
     
+    message_stack = []
+    file_stack = []
+    
     with open(proto_file) as f:
         for line in f.readlines():
             vprint(">>>> "+ line)
+            
             if line.startswith('message '):
-                assert current_message is None
                 
                 if line.endswith('{}'):
-                    print(f"### WARNING: empty message? line={line}")
+                    print(f"### WARNING: empty message? text={line}")
                     continue
                 
+                if current_message is not None:
+                    message_stack.append(current_message)
+                    file_stack.append(current_file)
+                    
                 current_message = line.strip().lstrip('message ').rstrip('{').strip()
+                
                 ros_msg_file = os.path.join(out_dir, current_message+'.msg')
                 if os.path.exists(ros_msg_file):
                     print("### WARNING: message exists: " + current_message)
@@ -51,14 +59,19 @@ def proto2_to_rosmsg(proto_file, out_dir):
                 continue
             
             if line.startswith('}'):
-                assert current_message is not None
                 current_file.close()
                 current_message = None
+                current_file = None
+                
+                if len(message_stack) > 0:
+                    current_message = message_stack.pop()
+                    current_file = file_stack.pop()
+
                 continue
             
             newline=ros_signal(line)
             if newline is None:
-                print(f"### WARNING: skipped signal in {current_message}, line={line}")
+                print(f"### WARNING: skipped signal in {current_message}, text={line}")
                 # os.system(f'cat {proto_file}')
                 continue
                 
@@ -67,7 +80,7 @@ def proto2_to_rosmsg(proto_file, out_dir):
 
 def pre_process(filename, out_dir):
     tempfile = os.path.join(out_dir, '.temp.proto')
-    cmd = "cat {} | grep -v ^syntax | grep -v ^import | grep -v ^package | sed '/\/\*/,/*\//d' | sed 's|//.*$||g' | sed -E 's/^[ \\t]+//g' | sed -E 's/[ \\t]+$//g' | sed -E '/^$/d' | sed 's/=.*$//g' | sed '/^enum.*{{/,/^}}/d' | sed '/^oneof.*{{/,/^}}/d' > {}".format(filename, tempfile)
+    cmd = "cat {} | grep -v ^syntax | grep -v ^import | grep -v ^package | sed '/\/\*/,/*\//d' | sed 's|//.*$||g' | sed -E 's/^[ \\t]+//g' | sed -E 's/[ \\t]+$//g' | sed 's/\r//g' | sed -E '/^$/d' | sed 's/=.*$//g' | sed '/^enum/,/^}}/d' | sed '/^oneof/,/^}}/d' > {}".format(filename, tempfile)
     
     vprint(cmd)
     """
@@ -112,7 +125,7 @@ if __name__ == "__main__":
     # check proto version: only proto2 is supported
     ret = os.system(f"cat {filename} | grep ^syntax | grep -qc proto2")
     if ret != 0:
-        print(f"### ERROR: {filename} is not proto2 file")
+        print(f"### ERROR: {filename} is not a proto2 file")
         exit()
 
     os.makedirs(out_dir, exist_ok=True)
