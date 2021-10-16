@@ -7,11 +7,11 @@ python3 proto2rosmsg proto_example/modules/canbus/proto/chassis.proto
 ```
 
 ```
-find proto_examples -name '*.proto' | xargs -n1 python3 proto2rosmsg
+find proto_example -name '*.proto' | xargs -n1 python3 proto2rosmsg
 ```
 
-# limits
-- only proto2 is supported
+# limitations
+- only proto2 syntax is supported
 - empty message is not supported, e.g.
 ```
 message Foo {}
