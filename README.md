@@ -3,15 +3,16 @@
 convert proto file to ROS messages.
 
 ```
-python3 proto2rosmsg proto_example/modules/canbus/proto/chassis.proto
+python3 proto2rosmsg.py proto_example/modules/canbus/proto/chassis.proto
 ```
 
 ```
-find proto_example -name '*.proto' | xargs -n1 python3 proto2rosmsg
+find proto_example -name '*.proto' | xargs -n1 python3 proto2rosmsg.py
 ```
 
 # limitations
 - only proto2 syntax is supported
+- enum is treated as int32 (defined in enum_list.txt)
 - empty message is not supported, e.g.
 ```
 message Foo {}
@@ -29,4 +30,9 @@ required float
 - map is not supported, e.g.
 ```
 map<string, bool> foo = 1;
+```
+
+# generate enumeration list
+```
+find proto_example -name *.proto | xargs grep -h "enum " | sed 's/^[ \t]*//g' | grep ^enum | sed 's/{//g' | awk '{print $2}' | sort | uniq > enum_list.txt
 ```

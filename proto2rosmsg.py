@@ -7,15 +7,44 @@ Created on Sat Oct 16 11:32:28 2021
 """
 
 import os
+import sys
 import argparse
+import subprocess
 
 def vprint(*args):
     if os.getenv('VERBOSE'):
         print(args)
 
+ros_type_map ={
+    "sint8": "int8",
+    "sint16": "int16",
+    "sint32": "int32",
+    "sint64": "int64",
+    "float": "float32",
+    "double": "float64"
+}
+
+def get_enum_list():
+    enum_list_file = os.path.dirname(sys.argv[0]) + 'enum_list.txt'
+    enum_list=set()
+    
+    if os.path.exists(enum_list_file):
+        with open(enum_list_file, 'r') as f:
+            for line in f.readlines():
+                enum_list.add(line.strip())
+
+    return enum_list
+
 # convert proto to ros message
 def type_translate(type_str):
+    if type_str in get_enum_list():
+        return "int32"
+
+    if type_str in ros_type_map.keys():
+        return ros_type_map[type_str]
+
     return type_str
+
 
 def ros_signal(text):
     tokens = text.strip().split()
@@ -130,6 +159,7 @@ if __name__ == "__main__":
 
     os.makedirs(out_dir, exist_ok=True)
     tempfile = pre_process(filename, out_dir)
+    
     try:
         proto2_to_rosmsg(tempfile, out_dir)
     except Exception as e:
